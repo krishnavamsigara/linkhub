@@ -1,0 +1,15 @@
+{
+  "name": "linkhub",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @linkhub/api dev",
+    "build": "pnpm --filter @linkhub/api build",
+    "start": "pnpm --filter @linkhub/api start",
+    "typecheck": "pnpm --filter @linkhub/api typecheck",
+    "lint": "pnpm --filter @linkhub/api lint",
+    "lint:fix": "pnpm --filter @linkhub/api lint:fix",
+    "format": "pnpm --filter @linkhub/api format",
+    "format:check": "pnpm --filter @linkhub/api format:check"
+  },
+  "packageManager": "pnpm@11.20.0"
+}
