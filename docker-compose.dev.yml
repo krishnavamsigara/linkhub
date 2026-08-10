@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: linkhub-postgres-dev
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: vamsi123
+      POSTGRES_DB: linkhub
+
+    ports:
+      # Port 5433 on host avoids conflicts with native Windows Postgres on 5432
+      - "5433:5432"
+
+    volumes:
+      - linkhub_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      # FIXED: Changed -U to 'postgres' and -d to 'linkhub' to match your environment variables
+      test: ["CMD-SHELL", "pg_isready -U postgres -d linkhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  linkhub_postgres_data:

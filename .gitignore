@@ -32,3 +32,5 @@ temp/
 
 # Prisma later
 .prisma/
+
+src/generated/
