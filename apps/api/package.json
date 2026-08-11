@@ -15,17 +15,18 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "prisma generate",
-        "db:migrate": "prisma migrate dev",
-        "db:migrate:deploy": "prisma migrate deploy",
-        "db:migrate:status": "prisma migrate status",
-        "db:seed": "prisma db seed",
-        "db:studio": "prisma studio",
-        "db:reset": "prisma migrate reset"
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^7.9.1",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "pino": "^9.9.0",
@@ -37,12 +38,14 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.13.3",
+    "dotenv": "^17.4.2",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
     "prisma": "^7.9.1",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.39.0"
+    "typescript-eslint": "^8.39.0",
+    "vitest": "^4.1.10"
   }
 }

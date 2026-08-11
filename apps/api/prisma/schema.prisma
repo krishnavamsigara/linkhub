@@ -21,3 +21,20 @@ model SystemMetadata {
 
   @@map("system_metadata")
 }
+
+
+
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @unique @db.VarChar(255)
+  username    String    @unique @db.VarChar(50)
+  displayName String?   @map("display_name") @db.VarChar(100)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("users")
+}

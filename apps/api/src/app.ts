@@ -11,6 +11,7 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 import { notFoundMiddleware } from './middleware/not-found.middleware.js';
 import { requestIdMiddleware } from './middleware/request-id.middleware.js';
 import { healthRouter } from './modules/health/index.js';
+import { userRouter } from './modules/users/index.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -51,6 +52,8 @@ export const createApp = (): Express => {
   });
 
   app.use('/api/v1/health', healthRouter);
+
+  app.use('/api/v1/users', userRouter);
 
   app.use(notFoundMiddleware);
 
