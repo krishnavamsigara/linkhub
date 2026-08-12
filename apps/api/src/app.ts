@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 import pinoHttpModule from 'pino-http';
 
@@ -12,6 +13,7 @@ import { notFoundMiddleware } from './middleware/not-found.middleware.js';
 import { requestIdMiddleware } from './middleware/request-id.middleware.js';
 import { healthRouter } from './modules/health/index.js';
 import { userRouter } from './modules/users/index.js';
+import { authRouter } from './modules/auth/index.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -25,6 +27,8 @@ export const createApp = (): Express => {
   );
 
   app.use(requestIdMiddleware);
+
+  app.use(cookieParser());
 
   app.use(helmet());
 
@@ -54,6 +58,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/health', healthRouter);
 
   app.use('/api/v1/users', userRouter);
+
+  app.use('/api/v1/auth',authRouter);
 
   app.use(notFoundMiddleware);
 

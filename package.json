@@ -30,7 +30,11 @@
 
      "db:studio": "pnpm --filter @linkhub/api db:studio",
 
-     "db:reset": "pnpm --filter @linkhub/api db:reset"
+     "db:reset": "pnpm --filter @linkhub/api db:reset",
+
+     "test": "vitest run",
+
+     "test:watch": "vitest"
    },
   "packageManager": "pnpm@11.20.0",
   "devDependencies": {

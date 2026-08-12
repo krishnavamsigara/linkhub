@@ -22,19 +22,55 @@ model SystemMetadata {
   @@map("system_metadata")
 }
 
-
-
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  email       String    @unique @db.VarChar(255)
-  username    String    @unique @db.VarChar(50)
-  displayName String?   @map("display_name") @db.VarChar(100)
+  id          String  @id @default(uuid()) @db.Uuid
+  email       String  @unique @db.VarChar(255)
+  username    String  @unique @db.VarChar(50)
+  displayName String? @map("display_name") @db.VarChar(100)
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  credentials UserCredential?
+  sessions    Session[]
+
   @@index([deletedAt])
   @@index([createdAt])
   @@map("users")
+}
+
+model UserCredential {
+  id           String @id @default(uuid()) @db.Uuid
+  userId       String @unique @map("user_id") @db.Uuid
+  passwordHash String @map("password_hash") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_credentials")
+}
+
+model Session {
+  id               String @id @default(uuid()) @db.Uuid
+  userId           String @map("user_id") @db.Uuid
+  refreshTokenHash String @map("refresh_token_hash") @db.VarChar(255)
+
+  userAgent String? @map("user_agent") @db.VarChar(1000)
+  ipAddress String? @map("ip_address") @db.VarChar(100)
+
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
 }

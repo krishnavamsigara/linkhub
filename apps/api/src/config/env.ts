@@ -30,6 +30,34 @@ const envSchema = z.object({
       (val) => val.startsWith('postgres://') || val.startsWith('postgresql://'),
       { message: 'DATABASE_URL must be a valid PostgreSQL connection string' },
     ),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32),
+
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32),
+
+  JWT_ACCESS_EXPIRES_IN: z
+    .string()
+    .default('15m'),
+
+  JWT_REFRESH_EXPIRES_IN: z
+    .string()
+    .default('7d'),
+
+  AUTH_REFRESH_COOKIE_NAME: z
+    .string()
+    .default('linkhub_refresh_token'),
+
+  AUTH_REFRESH_COOKIE_SECURE: z
+    .coerce
+    .boolean()
+    .default(false),
+
+  AUTH_REFRESH_COOKIE_SAME_SITE: z
+    .enum(['strict', 'lax', 'none'])
+    .default('lax'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
