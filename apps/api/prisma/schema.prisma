@@ -22,11 +22,19 @@ model SystemMetadata {
   @@map("system_metadata")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
 model User {
   id          String  @id @default(uuid()) @db.Uuid
   email       String  @unique @db.VarChar(255)
   username    String  @unique @db.VarChar(50)
   displayName String? @map("display_name") @db.VarChar(100)
+
+  role UserRole @default(USER)
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -34,6 +42,7 @@ model User {
 
   credentials UserCredential?
   sessions    Session[]
+  auditLogs   AuditLog[] @relation("AuditActor")
 
   @@index([deletedAt])
   @@index([createdAt])
@@ -73,4 +82,32 @@ model Session {
   @@index([expiresAt])
   @@index([revokedAt])
   @@map("sessions")
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  actorUserId String @map("actor_user_id") @db.Uuid
+  targetUserId String? @map("target_user_id") @db.Uuid
+
+  action String @db.VarChar(100)
+
+  oldRole UserRole? @map("old_role")
+  newRole UserRole? @map("new_role")
+
+  ipAddress String? @map("ip_address") @db.VarChar(100)
+  userAgent String? @map("user_agent") @db.VarChar(1000)
+
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+
+  actor User @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

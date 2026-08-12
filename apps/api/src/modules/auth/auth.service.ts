@@ -86,6 +86,7 @@ export class AuthService {
             email: input.email,
             username: input.username,
             displayName: input.displayName ?? null,
+            role: 'USER',
           },
         });
 
@@ -136,6 +137,7 @@ export class AuthService {
         username: result.user.username,
         displayName:
           result.user.displayName,
+        role: result.user.role,
       },
       accessToken,
       refreshToken:
@@ -216,6 +218,8 @@ export class AuthService {
         email: user.email,
         username: user.username,
         displayName: user.displayName,
+        role: user.role,
+
       },
       accessToken,
       refreshToken,
@@ -315,6 +319,7 @@ export class AuthService {
         email: session.user.email,
         username: session.user.username,
         displayName: session.user.displayName,
+        role: session.user.role,
       },
       accessToken,
       refreshToken: newRefreshToken,
@@ -363,6 +368,7 @@ export class AuthService {
       email: user.email,
       username: user.username,
       displayName: user.displayName,
+      role: user.role,
     };
   }
 }
