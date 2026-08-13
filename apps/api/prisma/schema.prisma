@@ -35,6 +35,7 @@ model User {
   displayName String? @map("display_name") @db.VarChar(100)
 
   role UserRole @default(USER)
+  oauthAccounts OAuthAccount[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -110,4 +111,37 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+model OAuthAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+
+  provider OAuthProvider
+
+  providerAccountId String
+
+  accessToken String?
+  refreshToken String?
+
+  accessTokenExpiresAt DateTime?
+
+  scope String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+
+  @@index([userId])
+  @@map("oauth_accounts")
 }

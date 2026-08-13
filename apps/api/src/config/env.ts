@@ -19,6 +19,8 @@ const envSchema = z.object({
 
   CORS_ORIGIN: z.string().min(1).default('http://localhost:3000'),
 
+  FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
@@ -60,6 +62,30 @@ const envSchema = z.object({
     .default('lax'),
 
   REDIS_URL: z
+    .string()
+    .url(),
+
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .min(1),
+
+  GOOGLE_CLIENT_SECRET: z
+    .string()
+    .min(1),
+
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .url(),
+
+  GITHUB_CLIENT_ID: z
+    .string()
+    .min(1),
+
+  GITHUB_CLIENT_SECRET: z
+    .string()
+    .min(1),
+
+  GITHUB_REDIRECT_URI: z
     .string()
     .url(),
 });

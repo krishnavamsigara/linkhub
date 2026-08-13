@@ -15,6 +15,7 @@ import { healthRouter } from './modules/health/index.js';
 import { userRouter } from './modules/users/index.js';
 import { adminRouter } from './modules/admin/index.js';
 import { authRouter } from './modules/auth/index.js';
+import { oauthRouter } from './modules/oauth/index.js';
 
 
 export const createApp = (): Express => {
@@ -63,7 +64,9 @@ export const createApp = (): Express => {
 
   app.use('/api/v1/auth', authRouter);
 
-  app.use('/api/v1/admin',adminRouter);
+  app.use('/api/v1/admin', adminRouter);
+
+  app.use('/api/v1/oauth',oauthRouter);
 
   app.use(notFoundMiddleware);
 
