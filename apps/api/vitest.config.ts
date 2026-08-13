@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config';
+import dotenv from 'dotenv';
+
+// Preload .env.test for integration/unit tests
+dotenv.config({ path: '.env.test' });
 
 export default defineConfig({
   test: {
-    globals: true,
     environment: 'node',
-    setupFiles: ['./vitest.setup.ts'],
+    globals: true,
+    // ensure setupFiles point to any global test hooks if you have them
   },
 });

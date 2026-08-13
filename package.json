@@ -1,49 +1,36 @@
 {
   "name": "linkhub",
   "private": true,
-  "scripts":{
-     "dev": "pnpm --filter @linkhub/api dev",
-
-     "build": "pnpm --filter @linkhub/api build",
-
-     "start": "pnpm --filter @linkhub/api start",
-
-     "typecheck": "pnpm --filter @linkhub/api typecheck",
-
-     "lint": "pnpm --filter @linkhub/api lint",
-
-     "lint:fix": "pnpm --filter @linkhub/api lint:fix",
-
-     "format": "pnpm --filter @linkhub/api format",
-
-     "format:check": "pnpm --filter @linkhub/api format:check",
-
-     "db:generate": "pnpm --filter @linkhub/api db:generate",
-
-     "db:migrate": "pnpm --filter @linkhub/api db:migrate",
-
-     "db:migrate:deploy": "pnpm --filter @linkhub/api db:migrate:deploy",
-
-     "db:migrate:status": "pnpm --filter @linkhub/api db:migrate:status",
-
-     "db:seed": "pnpm --filter @linkhub/api db:seed",
-
-     "db:studio": "pnpm --filter @linkhub/api db:studio",
-
-     "db:reset": "pnpm --filter @linkhub/api db:reset",
-
-     "test": "vitest run",
-
-     "test:watch": "vitest"
-   },
+  "scripts": {
+    "dev": "pnpm --filter @linkhub/api dev",
+    "build": "pnpm --filter @linkhub/api build",
+    "start": "pnpm --filter @linkhub/api start",
+    "typecheck": "pnpm --filter @linkhub/api typecheck",
+    "lint": "pnpm --filter @linkhub/api lint",
+    "lint:fix": "pnpm --filter @linkhub/api lint:fix",
+    "format": "pnpm --filter @linkhub/api format",
+    "format:check": "pnpm --filter @linkhub/api format:check",
+    "db:generate": "pnpm --filter @linkhub/api db:generate",
+    "db:migrate": "pnpm --filter @linkhub/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @linkhub/api db:migrate:deploy",
+    "db:migrate:status": "pnpm --filter @linkhub/api db:migrate:status",
+    "db:seed": "pnpm --filter @linkhub/api db:seed",
+    "db:superadmin": "pnpm --filter @linkhub/api db:superadmin",
+    "db:studio": "pnpm --filter @linkhub/api db:studio",
+    "db:reset": "pnpm --filter @linkhub/api db:reset",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "packageManager": "pnpm@11.20.0",
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/pg": "^8.21.0",
-    "prisma": "^7.9.1"
+    "prisma": "^7.9.1",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
+    "ioredis": "^6.0.0",
     "pg": "^8.23.0"
   }
 }

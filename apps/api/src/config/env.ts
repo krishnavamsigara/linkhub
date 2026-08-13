@@ -58,6 +58,10 @@ const envSchema = z.object({
   AUTH_REFRESH_COOKIE_SAME_SITE: z
     .enum(['strict', 'lax', 'none'])
     .default('lax'),
+
+  REDIS_URL: z
+    .string()
+    .url(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

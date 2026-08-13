@@ -16,6 +16,7 @@ import { userRouter } from './modules/users/index.js';
 import { adminRouter } from './modules/admin/index.js';
 import { authRouter } from './modules/auth/index.js';
 
+
 export const createApp = (): Express => {
   const app = express();
 
