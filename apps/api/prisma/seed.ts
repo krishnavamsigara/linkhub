@@ -1,4 +1,5 @@
-import { prisma, disconnectDatabase } from '../src/infrastructure/database/prisma';
+import { prisma, disconnectDatabase } from '../src/infrastructure/database/prisma.js';
+import { seedPermissions } from './permission-seed.js';
 
 const seed = async () => {
   await prisma.systemMetadata.upsert({
@@ -13,6 +14,8 @@ const seed = async () => {
       value: 'LinkHub',
     },
   });
+
+  await seedPermissions();
 
   console.log('Database seed completed.');
 };
