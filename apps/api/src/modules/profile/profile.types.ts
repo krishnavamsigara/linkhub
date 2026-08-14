@@ -5,6 +5,7 @@ export interface UpdateProfileInput {
   website?: string | null | undefined;
   location?: string | null | undefined;
   displayName?: string | null | undefined;
+  themeId?: string | null | undefined;
 }
 
 export interface ProfileResponse {
@@ -15,8 +16,10 @@ export interface ProfileResponse {
   bio: string | null;
   website: string | null;
   location: string | null;
+  themeId: string | null;
   avatarUrl: string | null;
   avatarStatus: AvatarStatus;
   createdAt: Date;
   updatedAt: Date;
 }
+

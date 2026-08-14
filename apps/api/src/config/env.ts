@@ -155,6 +155,18 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z
     .string()
     .optional(),
+
+  RAZORPAY_KEY_ID: z
+    .string()
+    .default('rzp_test_dummy_key_id'),
+
+  RAZORPAY_KEY_SECRET: z
+    .string()
+    .default('rzp_test_dummy_key_secret'),
+
+  RAZORPAY_WEBHOOK_SECRET: z
+    .string()
+    .default('rzp_test_webhook_secret'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

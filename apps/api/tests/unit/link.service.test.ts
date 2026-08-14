@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { linkService } from '../../src/modules/links/link.service.js';
 import { linkRepository } from '../../src/modules/links/link.repository.js';
+import { paymentRepository } from '../../src/modules/payments/payment.repository.js';
 import { analyticsQueue } from '../../src/infrastructure/queue/index.js';
 import { AppError } from '../../src/shared/errors/app-error.js';
 
 vi.mock('../../src/modules/links/link.repository.js');
+vi.mock('../../src/modules/payments/payment.repository.js');
 vi.mock('../../src/infrastructure/queue/index.js', () => ({
   analyticsQueue: {
     add: vi.fn().mockResolvedValue({ id: 'job-analytics-1' }),
@@ -33,12 +35,42 @@ describe('LinkService', () => {
     updatedAt: new Date(),
   };
 
+  const mockProSubscription = {
+    id: 'sub-1',
+    userId: mockUserId,
+    plan: 'PRO' as const,
+    status: 'ACTIVE' as const,
+    razorpaySubscriptionId: null,
+    razorpayCustomerId: null,
+    currentPeriodStart: new Date(),
+    currentPeriodEnd: new Date(Date.now() + 86400000),
+    cancelledAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockFreeSubscription = {
+    id: 'sub-2',
+    userId: mockUserId,
+    plan: 'FREE' as const,
+    status: 'ACTIVE' as const,
+    razorpaySubscriptionId: null,
+    razorpayCustomerId: null,
+    currentPeriodStart: null,
+    currentPeriodEnd: null,
+    cancelledAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('createLink', () => {
     it('should create link with custom shortCode and calculated expiration in days', async () => {
+      vi.mocked(paymentRepository.ensureFreeSubscription).mockResolvedValue(mockFreeSubscription);
+      vi.mocked(paymentRepository.countUserLinks).mockResolvedValue(2);
       vi.mocked(linkRepository.findByShortCode).mockResolvedValue(null);
       vi.mocked(linkRepository.create).mockResolvedValue(mockLink);
 
@@ -55,6 +87,8 @@ describe('LinkService', () => {
     });
 
     it('should throw AppError 409 if custom shortcode is already taken', async () => {
+      vi.mocked(paymentRepository.ensureFreeSubscription).mockResolvedValue(mockFreeSubscription);
+      vi.mocked(paymentRepository.countUserLinks).mockResolvedValue(2);
       vi.mocked(linkRepository.findByShortCode).mockResolvedValue(mockLink);
 
       await expect(
@@ -104,7 +138,8 @@ describe('LinkService', () => {
   });
 
   describe('getLinkAnalytics', () => {
-    it('should aggregate analytics metrics correctly', async () => {
+    it('should aggregate analytics metrics correctly for PRO user', async () => {
+      vi.mocked(paymentRepository.findSubscriptionByUserId).mockResolvedValue(mockProSubscription);
       vi.mocked(linkRepository.findById).mockResolvedValue(mockLink);
       vi.mocked(linkRepository.getRawClicks).mockResolvedValue([
         {

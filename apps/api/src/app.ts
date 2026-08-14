@@ -26,6 +26,8 @@ import { oauthRouter } from './modules/oauth/index.js';
 import { permissionRouter } from './modules/permissions/index.js';
 import { profileRouter } from './modules/profile/index.js';
 import { linkRouter, linkController } from './modules/links/index.js';
+import { paymentRouter, subscriptionRouter } from './modules/payments/payment.routes.js';
+import { themeRouter } from './modules/themes/theme.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -107,6 +109,9 @@ export const createApp = (): Express => {
   app.use('/api/v1/permissions', permissionRouter);
   app.use('/api/v1/profile', profileRouter);
   app.use('/api/v1/links', linkRouter);
+  app.use('/api/v1/payments', paymentRouter);
+  app.use('/api/v1/subscription', subscriptionRouter);
+  app.use('/api/v1/themes', themeRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

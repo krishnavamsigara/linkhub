@@ -118,6 +118,14 @@ export class AuthService {
           },
         });
 
+        // Create FREE subscription for new user
+        const now = new Date();
+        await tx.$executeRaw`
+          INSERT INTO subscriptions (user_id, plan, status, updated_at)
+          VALUES (${user.id}::uuid, 'FREE'::"Plan", 'ACTIVE'::"SubscriptionStatus", ${now})
+          ON CONFLICT (user_id) DO NOTHING
+        `;
+
         return {
           user,
           refreshToken,

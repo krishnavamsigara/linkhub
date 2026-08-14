@@ -1,10 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
@@ -12,20 +10,38 @@ datasource db {
   provider = "postgresql"
 }
 
-model SystemMetadata {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique
-  value     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("system_metadata")
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
 }
 
-enum UserRole {
-  USER
-  ADMIN
-  SUPER_ADMIN
+enum PermissionType {
+  SYSTEM
+  RESOURCE
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+enum OrderStatus {
+  CREATED
+  PAID
+  FAILED
 }
 
 model User {
@@ -34,23 +50,64 @@ model User {
   username    String  @unique @db.VarChar(50)
   displayName String? @map("display_name") @db.VarChar(100)
 
-  role UserRole @default(USER)
-  oauthAccounts OAuthAccount[]
+  role            UserRole         @default(USER)
+  oauthAccounts   OAuthAccount[]
   userPermissions UserPermission[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  credentials UserCredential?
-  profile     Profile?
-  sessions    Session[]
-  auditLogs   AuditLog[] @relation("AuditActor")
-  links       Link[]
+  credentials   UserCredential?
+  profile       Profile?
+  sessions      Session[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+  links         Link[]
+  subscription  Subscription?
+  paymentOrders PaymentOrder[]
 
   @@index([deletedAt])
   @@index([createdAt])
   @@map("users")
+}
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  userId                 String             @unique @map("user_id") @db.Uuid
+  plan                   Plan               @default(FREE)
+  status                 SubscriptionStatus @default(ACTIVE)
+  razorpaySubscriptionId String?            @map("razorpay_subscription_id") @db.VarChar(255)
+  razorpayCustomerId     String?            @map("razorpay_customer_id") @db.VarChar(255)
+  currentPeriodStart     DateTime?          @map("current_period_start")
+  currentPeriodEnd       DateTime?          @map("current_period_end")
+  cancelledAt            DateTime?          @map("cancelled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model PaymentOrder {
+  id                String      @id @default(uuid()) @db.Uuid
+  userId            String      @map("user_id") @db.Uuid
+  razorpayOrderId   String      @unique @map("razorpay_order_id") @db.VarChar(255)
+  razorpayPaymentId String?     @map("razorpay_payment_id") @db.VarChar(255)
+  razorpaySignature String?     @map("razorpay_signature") @db.VarChar(255)
+  amount            Int         @map("amount")
+  currency          String      @default("INR") @db.VarChar(10)
+  status            OrderStatus @default(CREATED)
+  notes             String?     @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("payment_orders")
 }
 
 model Link {
@@ -95,8 +152,6 @@ model LinkClick {
   @@map("link_clicks")
 }
 
-
-
 enum AvatarStatus {
   PENDING
   PROCESSING
@@ -107,6 +162,7 @@ enum AvatarStatus {
 model Profile {
   id             String       @id @default(uuid()) @db.Uuid
   userId         String       @unique @map("user_id") @db.Uuid
+  themeId        String?      @map("theme_id") @db.Uuid
   bio            String?      @db.Text
   website        String?      @db.VarChar(255)
   location       String?      @db.VarChar(100)
@@ -117,11 +173,30 @@ model Profile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme Theme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
 
   @@map("profiles")
 }
 
+model Theme {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  background  String   @db.VarChar(255)
+  buttonStyle String   @map("button_style") @db.VarChar(50)
+  buttonColor String   @map("button_color") @db.VarChar(50)
+  textColor   String   @map("text_color") @db.VarChar(50)
+  fontFamily  String   @map("font_family") @db.VarChar(50)
+  isPro       Boolean  @default(false) @map("is_pro")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profiles Profile[]
+
+  @@map("themes")
+}
 
 model UserCredential {
   id           String @id @default(uuid()) @db.Uuid
@@ -137,125 +212,57 @@ model UserCredential {
 }
 
 model Session {
-  id               String @id @default(uuid()) @db.Uuid
-  userId           String @map("user_id") @db.Uuid
-  refreshTokenHash String @map("refresh_token_hash") @db.VarChar(255)
-
-  userAgent String? @map("user_agent") @db.VarChar(1000)
-  ipAddress String? @map("ip_address") @db.VarChar(100)
-
-  expiresAt DateTime  @map("expires_at")
-  revokedAt DateTime? @map("revoked_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash") @db.VarChar(255)
+  userAgent        String?   @map("user_agent") @db.VarChar(1000)
+  ipAddress        String?   @map("ip_address") @db.VarChar(100)
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([expiresAt])
-  @@index([revokedAt])
+  @@index([refreshTokenHash])
   @@map("sessions")
 }
 
-model AuditLog {
-  id String @id @default(uuid()) @db.Uuid
-
-  actorUserId String @map("actor_user_id") @db.Uuid
-  targetUserId String? @map("target_user_id") @db.Uuid
-
-  action String @db.VarChar(100)
-
-  oldRole UserRole? @map("old_role")
-  newRole UserRole? @map("new_role")
-
-  ipAddress String? @map("ip_address") @db.VarChar(100)
-  userAgent String? @map("user_agent") @db.VarChar(1000)
-
-  metadata Json?
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-
-  actor User @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
-
-  @@index([actorUserId])
-  @@index([targetUserId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-enum OAuthProvider {
-  GOOGLE
-  GITHUB
-}
-
 model OAuthAccount {
-  id String @id @default(uuid()) @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  provider       OAuthProvider
+  providerUserId String        @map("provider_user_id") @db.VarChar(255)
+  email          String?       @db.VarChar(255)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  userId String @db.Uuid
-
-  provider OAuthProvider
-
-  providerAccountId String
-
-  accessToken String?
-  refreshToken String?
-
-  accessTokenExpiresAt DateTime?
-
-  scope String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@unique([userId, provider])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("oauth_accounts")
 }
 
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique @db.VarChar(100)
-  name        String   @db.VarChar(100)
-  description String?  @db.VarChar(255)
-  module      String   @db.VarChar(50)
+  id          String         @id @default(uuid()) @db.Uuid
+  code        String         @unique @db.VarChar(100)
+  name        String         @db.VarChar(100)
+  description String?        @db.Text
+  module      String?        @db.VarChar(100)
+  type        PermissionType @default(SYSTEM)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  rolePermissions RolePermission[]
   userPermissions UserPermission[]
 
-  @@index([module])
   @@map("permissions")
-}
-
-model RolePermission {
-  id           String   @id @default(uuid()) @db.Uuid
-  role         UserRole
-  permissionId String   @map("permission_id") @db.Uuid
-
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([role, permissionId])
-  @@index([role])
-  @@map("role_permissions")
 }
 
 model UserPermission {
   id           String   @id @default(uuid()) @db.Uuid
   userId       String   @map("user_id") @db.Uuid
   permissionId String   @map("permission_id") @db.Uuid
-  granted      Boolean  @default(true)
-
   createdAt    DateTime @default(now()) @map("created_at")
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -263,5 +270,48 @@ model UserPermission {
 
   @@unique([userId, permissionId])
   @@index([userId])
+  @@index([permissionId])
   @@map("user_permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  role         UserRole
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("role_permissions")
+}
+
+model SystemMetadata {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_metadata")
+}
+
+model AuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  actorId      String?   @map("actor_id") @db.Uuid
+  actorUserId  String?   @map("actor_user_id") @db.Uuid
+  targetUserId String?   @map("target_user_id") @db.Uuid
+  action       String    @db.VarChar(100)
+  entity       String    @default("SYSTEM") @db.VarChar(100)
+  entityId     String?   @map("entity_id") @db.VarChar(255)
+  oldRole      UserRole? @map("old_role")
+  newRole      UserRole? @map("new_role")
+  details      Json?
+  ipAddress    String?   @map("ip_address") @db.VarChar(100)
+  userAgent    String?   @map("user_agent") @db.VarChar(1000)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

@@ -3,12 +3,15 @@ import crypto from 'node:crypto';
 import { env } from '../../config/index.js';
 import { AppError } from '../../shared/errors/app-error.js';
 import { analyticsQueue } from '../../infrastructure/queue/index.js';
+import { paymentRepository } from '../payments/payment.repository.js';
 import { linkRepository } from './link.repository.js';
 import type {
   CreateLinkInput,
   LinkResponse,
   UpdateLinkInput,
 } from './link.types.js';
+
+const FREE_PLAN_LINK_LIMIT = 5;
 
 export interface LinkAnalyticsResponse {
   linkId: string;
@@ -35,6 +38,19 @@ export class LinkService {
     userId: string,
     input: CreateLinkInput,
   ): Promise<LinkResponse> {
+    // ─── FREE Plan Link Limit Guard ─────────────────────────────────────────
+    const subscription = await paymentRepository.ensureFreeSubscription(userId);
+    if (subscription.plan === 'FREE') {
+      const linkCount = await paymentRepository.countUserLinks(userId);
+      if (linkCount >= FREE_PLAN_LINK_LIMIT) {
+        throw new AppError(
+          `FREE plan is limited to ${FREE_PLAN_LINK_LIMIT} links. Please upgrade to PRO for unlimited links.`,
+          403,
+          'FREE_PLAN_LINK_LIMIT_EXCEEDED',
+        );
+      }
+    }
+
     let shortCode = input.shortCode?.trim();
 
     if (shortCode) {
@@ -194,6 +210,16 @@ export class LinkService {
     userId: string,
     linkId: string,
   ): Promise<LinkAnalyticsResponse> {
+    // ─── PRO Plan Analytics Guard ───────────────────────────────────────────
+    const subscription = await paymentRepository.findSubscriptionByUserId(userId);
+    if (!subscription || subscription.plan === 'FREE') {
+      throw new AppError(
+        'Analytics is a PRO feature. Please upgrade to access detailed click analytics.',
+        403,
+        'PRO_PLAN_REQUIRED_FOR_ANALYTICS',
+      );
+    }
+
     const link = await linkRepository.findById(linkId);
 
     if (!link) {

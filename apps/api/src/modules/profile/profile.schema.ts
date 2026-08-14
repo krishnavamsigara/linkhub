@@ -26,6 +26,13 @@ export const updateProfileSchema = z.object({
     .max(100, 'Display name must not exceed 100 characters')
     .nullable()
     .optional(),
+
+  themeId: z
+    .string()
+    .uuid('themeId must be a valid UUID')
+    .nullable()
+    .optional(),
 });
 
 export type UpdateProfileSchemaInput = z.infer<typeof updateProfileSchema>;
+

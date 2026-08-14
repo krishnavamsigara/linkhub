@@ -2,8 +2,27 @@ import { AppError } from '../../shared/errors/app-error.js';
 import { getStorageProvider } from '../../infrastructure/storage/index.js';
 import { avatarQueue } from '../../infrastructure/queue/index.js';
 import { userRepository } from '../users/user.repository.js';
+import { themeService } from '../themes/theme.service.js';
 import { profileRepository } from './profile.repository.js';
 import type { ProfileResponse, UpdateProfileInput } from './profile.types.js';
+
+type RepoProfile = {
+  id: string;
+  userId: string;
+  themeId: string | null;
+  bio: string | null;
+  website: string | null;
+  location: string | null;
+  avatarKey: string | null;
+  avatarStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    username: string;
+    displayName: string | null;
+  };
+};
 
 export class ProfileService {
   async getProfileByUserId(userId: string): Promise<ProfileResponse> {
@@ -19,7 +38,7 @@ export class ProfileService {
       profile = await profileRepository.createOrUpdateProfile(userId, {});
     }
 
-    return this.toResponse(profile, user);
+    return this.toResponse(profile);
   }
 
   async getProfileByUsername(username: string): Promise<ProfileResponse> {
@@ -35,7 +54,7 @@ export class ProfileService {
       profile = await profileRepository.createOrUpdateProfile(user.id, {});
     }
 
-    return this.toResponse(profile, user);
+    return this.toResponse(profile);
   }
 
   async updateProfile(
@@ -48,14 +67,17 @@ export class ProfileService {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
 
+    // ─── PRO Theme Guard ────────────────────────────────────────────────────
+    if (data.themeId) {
+      await themeService.assertCanUseTheme(userId, data.themeId);
+    }
+
     const updatedProfile = await profileRepository.createOrUpdateProfile(
       userId,
       data,
     );
 
-    const updatedUser = await userRepository.findById(userId);
-
-    return this.toResponse(updatedProfile, updatedUser || user);
+    return this.toResponse(updatedProfile);
   }
 
   async uploadAvatar(
@@ -112,19 +134,18 @@ export class ProfileService {
       try {
         const storage = getStorageProvider();
         await storage.delete(profile.avatarKey);
-      } catch (err) {
+      } catch (_err) {
         // Ignored
       }
     }
 
     const updatedProfile = await profileRepository.removeAvatar(userId);
-    const user = await userRepository.findById(userId);
 
-    if (!user) {
+    if (!updatedProfile.user) {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
 
-    return this.toResponse(updatedProfile, user);
+    return this.toResponse(updatedProfile);
   }
 
   async getAvatarStream(userId: string) {
@@ -138,36 +159,20 @@ export class ProfileService {
     return storage.getStream(profile.avatarKey);
   }
 
-  private toResponse(
-    profile: {
-      id: string;
-      userId: string;
-      bio: string | null;
-      website: string | null;
-      location: string | null;
-      avatarKey: string | null;
-      avatarStatus: string;
-      createdAt: Date;
-      updatedAt: Date;
-    },
-    user: {
-      id: string;
-      username: string;
-      displayName: string | null;
-    },
-  ): ProfileResponse {
+  private toResponse(profile: RepoProfile): ProfileResponse {
     const avatarUrl = profile.avatarKey
-      ? `/api/v1/profile/${user.id}/avatar`
+      ? `/api/v1/profile/${profile.user.id}/avatar`
       : null;
 
     return {
       id: profile.id,
-      userId: user.id,
-      username: user.username,
-      displayName: user.displayName,
+      userId: profile.user.id,
+      username: profile.user.username,
+      displayName: profile.user.displayName,
       bio: profile.bio,
       website: profile.website,
       location: profile.location,
+      themeId: profile.themeId,
       avatarUrl,
       avatarStatus: profile.avatarStatus as ProfileResponse['avatarStatus'],
       createdAt: profile.createdAt,

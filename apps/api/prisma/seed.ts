@@ -1,5 +1,6 @@
 import { prisma, disconnectDatabase } from '../src/infrastructure/database/prisma.js';
 import { seedPermissions } from './permission-seed.js';
+import { seedThemes } from './themeseed.js';
 
 const seed = async () => {
   await prisma.systemMetadata.upsert({
@@ -16,6 +17,7 @@ const seed = async () => {
   });
 
   await seedPermissions();
+  await seedThemes();
 
   console.log('Database seed completed.');
 };
@@ -28,3 +30,4 @@ seed()
   .finally(async () => {
     await disconnectDatabase();
   });
+

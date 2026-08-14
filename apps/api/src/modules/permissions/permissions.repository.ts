@@ -40,17 +40,19 @@ export class PermissionsRepository {
   async getRolePermissions(role: UserRole) {
     const rolePerms = await prisma.rolePermission.findMany({
       where: { role },
-      include: {
-        permission: true,
-      },
+      select: { permissionId: true },
       orderBy: {
-        permission: {
-          code: 'asc',
-        },
+        createdAt: 'asc',
       },
     });
 
-    return rolePerms.map((rp) => rp.permission);
+    if (rolePerms.length === 0) return [];
+
+    const permissionIds = rolePerms.map((rp) => rp.permissionId);
+    return prisma.permission.findMany({
+      where: { id: { in: permissionIds } },
+      orderBy: { code: 'asc' },
+    });
   }
 
   async setRolePermissions(role: UserRole, permissionIds: string[]) {
