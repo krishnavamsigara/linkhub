@@ -46,11 +46,36 @@ model User {
   profile     Profile?
   sessions    Session[]
   auditLogs   AuditLog[] @relation("AuditActor")
+  links       Link[]
 
   @@index([deletedAt])
   @@index([createdAt])
   @@map("users")
 }
+
+model Link {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  title       String    @db.VarChar(255)
+  originalUrl String    @map("original_url") @db.Text
+  shortCode   String    @unique @map("short_code") @db.VarChar(100)
+  description String?   @db.Text
+  icon        String?   @db.VarChar(100)
+  isActive    Boolean   @default(true) @map("is_active")
+  clicksCount Int       @default(0) @map("clicks_count")
+  expiresAt   DateTime? @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([shortCode])
+  @@index([expiresAt])
+  @@map("links")
+}
+
 
 enum AvatarStatus {
   PENDING

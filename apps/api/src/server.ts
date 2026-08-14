@@ -9,6 +9,7 @@ import {
   disconnectDatabase,
 } from './infrastructure/database/prisma.js';
 import { redis } from './infrastructure/redis/index.js';
+import { initializeLinkCronJob } from './infrastructure/queue/index.js';
 
 const logger = pino({ level: env.LOG_LEVEL || 'info' });
 
@@ -45,6 +46,9 @@ const startServer = async () => {
 
     // Connect Redis (required if lazyConnect: true was set in Redis options)
     await redis.connect();
+
+    // Initialize repeatable link cleanup cron job
+    await initializeLinkCronJob();
 
     server.listen(env.PORT, () => {
       logger.info(

@@ -18,6 +18,7 @@ import { authRouter } from './modules/auth/index.js';
 import { oauthRouter } from './modules/oauth/index.js';
 import { permissionRouter } from './modules/permissions/index.js';
 import { profileRouter } from './modules/profile/index.js';
+import { linkRouter, linkController } from './modules/links/index.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -59,6 +60,11 @@ export const createApp = (): Express => {
     });
   });
 
+  // Shortcode public redirect route (/r/:shortCode)
+  app.get('/r/:shortCode', (req, res, next) =>
+    linkController.handleRedirect(req, res, next),
+  );
+
   app.use('/api/v1/health', healthRouter);
 
   app.use('/api/v1/users', userRouter);
@@ -72,6 +78,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/permissions', permissionRouter);
 
   app.use('/api/v1/profile', profileRouter);
+
+  app.use('/api/v1/links', linkRouter);
 
   app.use(notFoundMiddleware);
 
