@@ -48,6 +48,41 @@ services:
             timeout: 3s
             retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    container_name: linkhub-minio-dev
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    command: server /data --console-address ":9001"
+    volumes:
+      - linkhub_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-createbuckets:
+    image: minio/mc
+    container_name: linkhub-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadminpassword;
+      /usr/bin/mc mb myminio/linkhub-avatars || true;
+      /usr/bin/mc anonymous set private myminio/linkhub-avatars;
+      exit 0;
+      "
+
 volumes:
   linkhub_postgres_data:
   linkhub_redis_data:
+  linkhub_minio_data:
+

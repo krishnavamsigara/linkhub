@@ -53,8 +53,12 @@ const envSchema = z.object({
     .default('linkhub_refresh_token'),
 
   AUTH_REFRESH_COOKIE_SECURE: z
-    .coerce
-    .boolean()
+    .union([z.boolean(), z.string()])
+    .transform((val) =>
+      typeof val === 'boolean'
+        ? val
+        : val.trim().toLowerCase() === 'true' || val.trim() === '1',
+    )
     .default(false),
 
   AUTH_REFRESH_COOKIE_SAME_SITE: z
@@ -88,6 +92,69 @@ const envSchema = z.object({
   GITHUB_REDIRECT_URI: z
     .string()
     .url(),
+
+  STORAGE_PROVIDER: z
+    .enum(['minio', 's3', 'cloudinary'])
+    .default('minio'),
+
+  MINIO_ENDPOINT: z
+    .string()
+    .default('localhost'),
+
+  MINIO_PORT: z
+    .coerce
+    .number()
+    .int()
+    .default(9000),
+
+  MINIO_USE_SSL: z
+    .union([z.boolean(), z.string()])
+    .transform((val) =>
+      typeof val === 'boolean'
+        ? val
+        : val.trim().toLowerCase() === 'true' || val.trim() === '1',
+    )
+    .default(false),
+
+  MINIO_ACCESS_KEY: z
+    .string()
+    .default('minioadmin'),
+
+  MINIO_SECRET_KEY: z
+    .string()
+    .default('minioadminpassword'),
+
+  MINIO_BUCKET: z
+    .string()
+    .default('linkhub-avatars'),
+
+  AWS_REGION: z
+    .string()
+    .optional(),
+
+  AWS_ACCESS_KEY_ID: z
+    .string()
+    .optional(),
+
+  AWS_SECRET_ACCESS_KEY: z
+    .string()
+    .optional(),
+
+  AWS_S3_BUCKET: z
+    .string()
+    .optional(),
+
+  CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .optional(),
+
+  CLOUDINARY_API_KEY: z
+    .string()
+    .optional(),
+
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

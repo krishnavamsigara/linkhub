@@ -17,7 +17,7 @@ import { adminRouter } from './modules/admin/index.js';
 import { authRouter } from './modules/auth/index.js';
 import { oauthRouter } from './modules/oauth/index.js';
 import { permissionRouter } from './modules/permissions/index.js';
-
+import { profileRouter } from './modules/profile/index.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -70,6 +70,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/oauth', oauthRouter);
 
   app.use('/api/v1/permissions', permissionRouter);
+
+  app.use('/api/v1/profile', profileRouter);
 
   app.use(notFoundMiddleware);
 

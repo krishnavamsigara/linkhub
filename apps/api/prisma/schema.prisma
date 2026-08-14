@@ -43,6 +43,7 @@ model User {
   deletedAt DateTime? @map("deleted_at")
 
   credentials UserCredential?
+  profile     Profile?
   sessions    Session[]
   auditLogs   AuditLog[] @relation("AuditActor")
 
@@ -50,6 +51,32 @@ model User {
   @@index([createdAt])
   @@map("users")
 }
+
+enum AvatarStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Profile {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @unique @map("user_id") @db.Uuid
+  bio            String?      @db.Text
+  website        String?      @db.VarChar(255)
+  location       String?      @db.VarChar(100)
+  avatarKey      String?      @map("avatar_key") @db.VarChar(255)
+  avatarMimeType String?      @map("avatar_mime_type") @db.VarChar(100)
+  avatarStatus   AvatarStatus @default(COMPLETED) @map("avatar_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
 
 model UserCredential {
   id           String @id @default(uuid()) @db.Uuid
