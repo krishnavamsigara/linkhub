@@ -109,6 +109,47 @@ export class LinkRepository {
 
     return result.count;
   }
+
+  // --- Click Analytics DB Operations ---
+
+  async createClickRecord(data: {
+    linkId: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    referrer?: string | null;
+    deviceType?: string | null;
+    browser?: string | null;
+    os?: string | null;
+    clickedAt?: Date;
+  }) {
+    return prisma.linkClick.create({
+      data: {
+        linkId: data.linkId,
+        ipAddress: data.ipAddress ?? null,
+        userAgent: data.userAgent ?? null,
+        referrer: data.referrer ?? 'Direct',
+        deviceType: data.deviceType ?? 'unknown',
+        browser: data.browser ?? 'Other',
+        os: data.os ?? 'Other',
+        clickedAt: data.clickedAt ?? new Date(),
+      },
+    });
+  }
+
+  async getRecentClicks(linkId: string, limit: number = 20) {
+    return prisma.linkClick.findMany({
+      where: { linkId },
+      orderBy: { clickedAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getRawClicks(linkId: string) {
+    return prisma.linkClick.findMany({
+      where: { linkId },
+      orderBy: { clickedAt: 'desc' },
+    });
+  }
 }
 
 export const linkRepository = new LinkRepository();

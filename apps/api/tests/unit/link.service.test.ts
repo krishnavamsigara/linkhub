@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { linkService } from '../../src/modules/links/link.service.js';
 import { linkRepository } from '../../src/modules/links/link.repository.js';
+import { analyticsQueue } from '../../src/infrastructure/queue/index.js';
 import { AppError } from '../../src/shared/errors/app-error.js';
 
 vi.mock('../../src/modules/links/link.repository.js');
+vi.mock('../../src/infrastructure/queue/index.js', () => ({
+  analyticsQueue: {
+    add: vi.fn().mockResolvedValue({ id: 'job-analytics-1' }),
+  },
+  linkCronQueue: {
+    add: vi.fn().mockResolvedValue({ id: 'cron-job-1' }),
+  },
+}));
 
 describe('LinkService', () => {
   const mockUserId = '11111111-1111-1111-1111-111111111111';
@@ -59,14 +68,25 @@ describe('LinkService', () => {
   });
 
   describe('handleRedirect', () => {
-    it('should increment clicks and return originalUrl for active valid link', async () => {
+    it('should enqueue background click analytics and return originalUrl for active valid link', async () => {
       vi.mocked(linkRepository.findByShortCode).mockResolvedValue(mockLink);
-      vi.mocked(linkRepository.incrementClicks).mockResolvedValue(mockLink);
 
-      const url = await linkService.handleRedirect('portfolio');
+      const url = await linkService.handleRedirect('portfolio', {
+        ipAddress: '127.0.0.1',
+        userAgent: 'Mozilla/5.0 Chrome/120.0',
+        referrer: 'https://google.com',
+      });
 
       expect(url).toBe('https://example.com/portfolio');
-      expect(linkRepository.incrementClicks).toHaveBeenCalledWith(mockLinkId);
+      expect(analyticsQueue.add).toHaveBeenCalledWith(
+        'record-link-click',
+        expect.objectContaining({
+          linkId: mockLinkId,
+          ipAddress: '127.0.0.1',
+          userAgent: 'Mozilla/5.0 Chrome/120.0',
+          referrer: 'https://google.com',
+        }),
+      );
     });
 
     it('should throw AppError 410 if link has expired', async () => {
@@ -80,6 +100,48 @@ describe('LinkService', () => {
       await expect(linkService.handleRedirect('portfolio')).rejects.toThrow(
         AppError,
       );
+    });
+  });
+
+  describe('getLinkAnalytics', () => {
+    it('should aggregate analytics metrics correctly', async () => {
+      vi.mocked(linkRepository.findById).mockResolvedValue(mockLink);
+      vi.mocked(linkRepository.getRawClicks).mockResolvedValue([
+        {
+          id: 'click-1',
+          linkId: mockLinkId,
+          ipAddress: '127.0.0.1',
+          userAgent: 'UA 1',
+          referrer: 'https://google.com',
+          deviceType: 'desktop',
+          browser: 'Chrome',
+          os: 'Windows',
+          clickedAt: new Date('2026-08-14T10:00:00.000Z'),
+        },
+        {
+          id: 'click-2',
+          linkId: mockLinkId,
+          ipAddress: '127.0.0.2',
+          userAgent: 'UA 2',
+          referrer: 'https://twitter.com',
+          deviceType: 'mobile',
+          browser: 'Safari',
+          os: 'iOS',
+          clickedAt: new Date('2026-08-14T11:00:00.000Z'),
+        },
+      ]);
+
+      const analytics = await linkService.getLinkAnalytics(
+        mockUserId,
+        mockLinkId,
+      );
+
+      expect(analytics).toBeDefined();
+      expect(analytics.totalClicks).toBe(15);
+      expect(analytics.deviceBreakdown).toEqual({ desktop: 1, mobile: 1 });
+      expect(analytics.browserBreakdown).toEqual({ Chrome: 1, Safari: 1 });
+      expect(analytics.osBreakdown).toEqual({ Windows: 1, iOS: 1 });
+      expect(analytics.recentClicks).toHaveLength(2);
     });
   });
 

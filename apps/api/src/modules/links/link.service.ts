@@ -2,12 +2,33 @@ import crypto from 'node:crypto';
 
 import { env } from '../../config/index.js';
 import { AppError } from '../../shared/errors/app-error.js';
+import { analyticsQueue } from '../../infrastructure/queue/index.js';
 import { linkRepository } from './link.repository.js';
 import type {
   CreateLinkInput,
   LinkResponse,
   UpdateLinkInput,
 } from './link.types.js';
+
+export interface LinkAnalyticsResponse {
+  linkId: string;
+  shortCode: string;
+  totalClicks: number;
+  deviceBreakdown: Record<string, number>;
+  browserBreakdown: Record<string, number>;
+  osBreakdown: Record<string, number>;
+  topReferrers: Record<string, number>;
+  clicksOverTime: Record<string, number>;
+  recentClicks: Array<{
+    id: string;
+    ipAddress: string | null;
+    deviceType: string | null;
+    browser: string | null;
+    os: string | null;
+    referrer: string | null;
+    clickedAt: Date;
+  }>;
+}
 
 export class LinkService {
   async createLink(
@@ -134,7 +155,14 @@ export class LinkService {
     await linkRepository.delete(linkId);
   }
 
-  async handleRedirect(shortCode: string): Promise<string> {
+  async handleRedirect(
+    shortCode: string,
+    reqMeta?: {
+      ipAddress?: string | null;
+      userAgent?: string | null;
+      referrer?: string | null;
+    },
+  ): Promise<string> {
     const link = await linkRepository.findByShortCode(shortCode);
 
     if (!link || !link.isActive) {
@@ -145,9 +173,83 @@ export class LinkService {
       throw new AppError('Link has expired', 410, 'LINK_EXPIRED');
     }
 
-    await linkRepository.incrementClicks(link.id);
+    // Enqueue background analytics click job (non-blocking)
+    try {
+      await analyticsQueue.add('record-link-click', {
+        linkId: link.id,
+        ipAddress: reqMeta?.ipAddress || null,
+        userAgent: reqMeta?.userAgent || null,
+        referrer: reqMeta?.referrer || null,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      // Fallback: direct click increment if queue error occurs
+      await linkRepository.incrementClicks(link.id);
+    }
 
     return link.originalUrl;
+  }
+
+  async getLinkAnalytics(
+    userId: string,
+    linkId: string,
+  ): Promise<LinkAnalyticsResponse> {
+    const link = await linkRepository.findById(linkId);
+
+    if (!link) {
+      throw new AppError('Link not found', 404, 'LINK_NOT_FOUND');
+    }
+
+    if (link.userId !== userId) {
+      throw new AppError('Forbidden', 403, 'FORBIDDEN');
+    }
+
+    const clicks = await linkRepository.getRawClicks(linkId);
+
+    const deviceBreakdown: Record<string, number> = {};
+    const browserBreakdown: Record<string, number> = {};
+    const osBreakdown: Record<string, number> = {};
+    const topReferrers: Record<string, number> = {};
+    const clicksOverTime: Record<string, number> = {};
+
+    for (const click of clicks) {
+      const device = click.deviceType || 'unknown';
+      deviceBreakdown[device] = (deviceBreakdown[device] || 0) + 1;
+
+      const browser = click.browser || 'Other';
+      browserBreakdown[browser] = (browserBreakdown[browser] || 0) + 1;
+
+      const os = click.os || 'Other';
+      osBreakdown[os] = (osBreakdown[os] || 0) + 1;
+
+      const ref = click.referrer || 'Direct';
+      topReferrers[ref] = (topReferrers[ref] || 0) + 1;
+
+      const dateStr = click.clickedAt.toISOString().split('T')[0]!;
+      clicksOverTime[dateStr] = (clicksOverTime[dateStr] || 0) + 1;
+    }
+
+    const recentClicks = clicks.slice(0, 20).map((c) => ({
+      id: c.id,
+      ipAddress: c.ipAddress,
+      deviceType: c.deviceType,
+      browser: c.browser,
+      os: c.os,
+      referrer: c.referrer,
+      clickedAt: c.clickedAt,
+    }));
+
+    return {
+      linkId: link.id,
+      shortCode: link.shortCode,
+      totalClicks: link.clicksCount,
+      deviceBreakdown,
+      browserBreakdown,
+      osBreakdown,
+      topReferrers,
+      clicksOverTime,
+      recentClicks,
+    };
   }
 
   async cleanupExpiredLinks(): Promise<number> {

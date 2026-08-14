@@ -68,13 +68,33 @@ model Link {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks LinkClick[]
 
   @@index([userId])
   @@index([shortCode])
   @@index([expiresAt])
   @@map("links")
 }
+
+model LinkClick {
+  id         String   @id @default(uuid()) @db.Uuid
+  linkId     String   @map("link_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(100)
+  userAgent  String?  @map("user_agent") @db.VarChar(1000)
+  referrer   String?  @db.VarChar(1000)
+  deviceType String?  @map("device_type") @db.VarChar(50)
+  browser    String?  @db.VarChar(50)
+  os         String?  @db.VarChar(50)
+  clickedAt  DateTime @default(now()) @map("clicked_at")
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+  @@index([clickedAt])
+  @@map("link_clicks")
+}
+
 
 
 enum AvatarStatus {

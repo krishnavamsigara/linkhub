@@ -140,6 +140,35 @@ export class LinkController {
     }
   }
 
+  async getLinkAnalytics(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+      }
+
+      const linkIdParam = req.params.id;
+      const linkId = Array.isArray(linkIdParam) ? linkIdParam[0] : linkIdParam;
+
+      if (!linkId) {
+        throw new AppError('Link ID is required', 400, 'BAD_REQUEST');
+      }
+
+      const analytics = await linkService.getLinkAnalytics(userId, linkId);
+
+      res.json({
+        success: true,
+        data: analytics,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async handleRedirect(
     req: Request,
     res: Response,
@@ -155,7 +184,16 @@ export class LinkController {
         throw new AppError('Shortcode is required', 400, 'BAD_REQUEST');
       }
 
-      const targetUrl = await linkService.handleRedirect(shortCode);
+      const ipAddress = (req.headers['x-forwarded-for'] as string) || req.ip || null;
+      const userAgent = req.get('user-agent') || null;
+      const referrer = req.get('referrer') || req.get('referer') || null;
+
+      const targetUrl = await linkService.handleRedirect(shortCode, {
+        ipAddress,
+        userAgent,
+        referrer,
+      });
+
       res.redirect(302, targetUrl);
     } catch (error) {
       next(error);

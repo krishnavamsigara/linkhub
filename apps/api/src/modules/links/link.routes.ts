@@ -17,6 +17,10 @@ linkRouter.get('/redirect/:shortCode', (req, res, next) =>
   linkController.handleRedirect(req, res, next),
 );
 
+linkRouter.get('/:id/analytics', requireAuth, (req, res, next) =>
+  linkController.getLinkAnalytics(req, res, next),
+);
+
 linkRouter.get('/:id', requireAuth, (req, res, next) =>
   linkController.getLinkById(req, res, next),
 );
