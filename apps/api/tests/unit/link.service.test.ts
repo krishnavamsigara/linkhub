@@ -7,6 +7,19 @@ import { AppError } from '../../src/shared/errors/app-error.js';
 
 vi.mock('../../src/modules/links/link.repository.js');
 vi.mock('../../src/modules/payments/payment.repository.js');
+vi.mock('../../src/infrastructure/redis/index.js', () => ({
+  cacheService: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue(true),
+    del: vi.fn().mockResolvedValue(1),
+  },
+  redisKeys: {
+    linkShortCode: (code: string) => `cache:link:shortcode:${code}`,
+  },
+  CACHE_TTL: {
+    SHORTCODE_REDIRECT: 86400,
+  },
+}));
 vi.mock('../../src/infrastructure/queue/index.js', () => ({
   analyticsQueue: {
     add: vi.fn().mockResolvedValue({ id: 'job-analytics-1' }),
@@ -15,6 +28,7 @@ vi.mock('../../src/infrastructure/queue/index.js', () => ({
     add: vi.fn().mockResolvedValue({ id: 'cron-job-1' }),
   },
 }));
+
 
 describe('LinkService', () => {
   const mockUserId = '11111111-1111-1111-1111-111111111111';
@@ -63,9 +77,12 @@ describe('LinkService', () => {
     updatedAt: new Date(),
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const { cacheService } = await import('../../src/infrastructure/redis/index.js');
+    vi.mocked(cacheService.get).mockResolvedValue(null);
   });
+
 
   describe('createLink', () => {
     it('should create link with custom shortCode and calculated expiration in days', async () => {
@@ -123,6 +140,21 @@ describe('LinkService', () => {
       );
     });
 
+    it('should return originalUrl directly from Redis cache without querying DB when cached', async () => {
+      const { cacheService } = await import('../../src/infrastructure/redis/index.js');
+      vi.mocked(cacheService.get).mockResolvedValue({
+        id: mockLinkId,
+        originalUrl: 'https://example.com/cached-target',
+        isActive: true,
+        expiresAt: null,
+      });
+
+      const url = await linkService.handleRedirect('cached-code');
+
+      expect(url).toBe('https://example.com/cached-target');
+      expect(linkRepository.findByShortCode).not.toHaveBeenCalled();
+    });
+
     it('should throw AppError 410 if link has expired', async () => {
       const expiredLink = {
         ...mockLink,
@@ -136,6 +168,7 @@ describe('LinkService', () => {
       );
     });
   });
+
 
   describe('getLinkAnalytics', () => {
     it('should aggregate analytics metrics correctly for PRO user', async () => {

@@ -44,8 +44,10 @@ const startServer = async () => {
     await connectDatabase();
     logger.info('PostgreSQL connected');
 
-    // Connect Redis (required if lazyConnect: true was set in Redis options)
-    await redis.connect();
+    // Connect Redis only if not already connecting/connected (lazyConnect: true)
+    if (redis.status === 'wait') {
+      await redis.connect();
+    }
 
     // Initialize repeatable link cleanup cron job
     await initializeLinkCronJob();

@@ -6,6 +6,20 @@ import { env } from '../../src/config/index.js';
 import { AppError } from '../../src/shared/errors/app-error.js';
 
 vi.mock('../../src/modules/payments/payment.repository.js');
+vi.mock('../../src/infrastructure/redis/index.js', () => ({
+  cacheService: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue(true),
+    del: vi.fn().mockResolvedValue(1),
+    getOrSet: vi.fn((_key: string, fetchFn: () => Promise<unknown>) => fetchFn()),
+  },
+  redisKeys: {
+    userSubscription: (id: string) => `cache:user:subscription:${id}`,
+  },
+  CACHE_TTL: {
+    USER_SUBSCRIPTION: 3600,
+  },
+}));
 
 describe('PaymentService', () => {
   const mockUserId = '11111111-1111-1111-1111-111111111111';
@@ -15,6 +29,7 @@ describe('PaymentService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
 
   describe('verifyPayment', () => {
     it('should successfully verify payment with valid HMAC signature and upgrade user to PRO', async () => {

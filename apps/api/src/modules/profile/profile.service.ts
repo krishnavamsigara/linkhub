@@ -1,6 +1,7 @@
 import { AppError } from '../../shared/errors/app-error.js';
 import { getStorageProvider } from '../../infrastructure/storage/index.js';
 import { avatarQueue } from '../../infrastructure/queue/index.js';
+import { cacheService, redisKeys, CACHE_TTL } from '../../infrastructure/redis/index.js';
 import { userRepository } from '../users/user.repository.js';
 import { themeService } from '../themes/theme.service.js';
 import { profileRepository } from './profile.repository.js';
@@ -42,19 +43,27 @@ export class ProfileService {
   }
 
   async getProfileByUsername(username: string): Promise<ProfileResponse> {
-    const user = await userRepository.findByUsername(username);
+    const cacheKey = redisKeys.publicProfile(username);
 
-    if (!user) {
-      throw new AppError('User not found', 404, 'USER_NOT_FOUND');
-    }
+    return cacheService.getOrSet<ProfileResponse>(
+      cacheKey,
+      async () => {
+        const user = await userRepository.findByUsername(username);
 
-    let profile = await profileRepository.findByUserId(user.id);
+        if (!user) {
+          throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+        }
 
-    if (!profile) {
-      profile = await profileRepository.createOrUpdateProfile(user.id, {});
-    }
+        let profile = await profileRepository.findByUserId(user.id);
 
-    return this.toResponse(profile);
+        if (!profile) {
+          profile = await profileRepository.createOrUpdateProfile(user.id, {});
+        }
+
+        return this.toResponse(profile);
+      },
+      CACHE_TTL.PUBLIC_PROFILE,
+    );
   }
 
   async updateProfile(
@@ -76,6 +85,9 @@ export class ProfileService {
       userId,
       data,
     );
+
+    // Invalidate public profile cache
+    await cacheService.del(redisKeys.publicProfile(user.username));
 
     return this.toResponse(updatedProfile);
   }
@@ -144,6 +156,9 @@ export class ProfileService {
     if (!updatedProfile.user) {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
+
+    // Invalidate public profile cache
+    await cacheService.del(redisKeys.publicProfile(updatedProfile.user.username));
 
     return this.toResponse(updatedProfile);
   }

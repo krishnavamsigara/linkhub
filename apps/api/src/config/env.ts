@@ -32,6 +32,16 @@ const envSchema = z.object({
       (val) => val.startsWith('postgres://') || val.startsWith('postgresql://'),
       { message: 'DATABASE_URL must be a valid PostgreSQL connection string' },
     ),
+
+  DATABASE_DIRECT_URL: z
+    .string()
+    .optional(),
+
+  DB_POOL_MAX: z.coerce.number().int().positive().default(20),
+  DB_POOL_MIN: z.coerce.number().int().nonnegative().default(2),
+  DB_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  DB_CONN_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   JWT_ACCESS_SECRET: z
     .string()
     .min(32),

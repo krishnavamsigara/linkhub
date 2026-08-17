@@ -1,21 +1,28 @@
 import { AppError } from '../../shared/errors/app-error.js';
 import { themeRepository } from './theme.repository.js';
 import { paymentRepository } from '../payments/payment.repository.js';
+import { cacheService, redisKeys, CACHE_TTL } from '../../infrastructure/redis/index.js';
 
 export class ThemeService {
   async listThemes() {
-    const themes = await themeRepository.findAll();
-    return themes.map((t) => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      background: t.background,
-      buttonStyle: t.buttonStyle,
-      buttonColor: t.buttonColor,
-      textColor: t.textColor,
-      fontFamily: t.fontFamily,
-      isPro: t.isPro,
-    }));
+    return cacheService.getOrSet(
+      redisKeys.themesAll(),
+      async () => {
+        const themes = await themeRepository.findAll();
+        return themes.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          background: t.background,
+          buttonStyle: t.buttonStyle,
+          buttonColor: t.buttonColor,
+          textColor: t.textColor,
+          fontFamily: t.fontFamily,
+          isPro: t.isPro,
+        }));
+      },
+      CACHE_TTL.THEMES_ALL,
+    );
   }
 
   async getThemeById(id: string) {

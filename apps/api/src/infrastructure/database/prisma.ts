@@ -3,11 +3,18 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { PrismaClient } from '../../generated/prisma/client.js';
 
+import { env } from '../../config/env.js';
+
 dotenv.config();
 
-// 1. Create a pg Pool instance using your environment variable
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
+// 1. Create a tuned pg Pool instance (optimized for PgBouncer transaction pooling or direct Postgres)
+export const pool = new pg.Pool({
+  connectionString: env.DATABASE_URL,
+  max: env.DB_POOL_MAX,
+  min: env.DB_POOL_MIN,
+  idleTimeoutMillis: env.DB_IDLE_TIMEOUT_MS,
+  connectionTimeoutMillis: env.DB_CONN_TIMEOUT_MS,
+  statement_timeout: env.DB_STATEMENT_TIMEOUT_MS,
 });
 
 // 2. Wrap the pool with Prisma's driver adapter

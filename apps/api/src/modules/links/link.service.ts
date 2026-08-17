@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { env } from '../../config/index.js';
 import { AppError } from '../../shared/errors/app-error.js';
 import { analyticsQueue } from '../../infrastructure/queue/index.js';
+import { cacheService, redisKeys, CACHE_TTL } from '../../infrastructure/redis/index.js';
 import { paymentRepository } from '../payments/payment.repository.js';
 import { linkRepository } from './link.repository.js';
 import type {
@@ -154,6 +155,12 @@ export class LinkService {
       expiresAt,
     });
 
+    // Invalidate Redis caches for both old and new shortcodes
+    await cacheService.del([
+      redisKeys.linkShortCode(existing.shortCode),
+      ...(input.shortCode ? [redisKeys.linkShortCode(input.shortCode)] : []),
+    ]);
+
     return this.toResponse(updated);
   }
 
@@ -169,6 +176,9 @@ export class LinkService {
     }
 
     await linkRepository.delete(linkId);
+
+    // Invalidate cached shortcode
+    await cacheService.del(redisKeys.linkShortCode(existing.shortCode));
   }
 
   async handleRedirect(
@@ -179,13 +189,44 @@ export class LinkService {
       referrer?: string | null;
     },
   ): Promise<string> {
-    const link = await linkRepository.findByShortCode(shortCode);
+    const cacheKey = redisKeys.linkShortCode(shortCode);
 
-    if (!link || !link.isActive) {
+    // ─── Fast-Path: Check Redis Cache First ─────────────────────────────────
+    interface CachedLink {
+      id: string;
+      originalUrl: string;
+      isActive: boolean;
+      expiresAt: string | null;
+    }
+
+    let link = await cacheService.get<CachedLink>(cacheKey);
+
+    if (!link) {
+      // ─── Cache Miss: Query PostgreSQL and populate cache ───────────────────
+      const dbLink = await linkRepository.findByShortCode(shortCode);
+
+      if (!dbLink || !dbLink.isActive) {
+        throw new AppError('Link not found or inactive', 404, 'LINK_NOT_FOUND');
+      }
+
+      link = {
+        id: dbLink.id,
+        originalUrl: dbLink.originalUrl,
+        isActive: dbLink.isActive,
+        expiresAt: dbLink.expiresAt ? dbLink.expiresAt.toISOString() : null,
+      };
+
+      // Store in Redis (24-hour TTL)
+      await cacheService.set(cacheKey, link, CACHE_TTL.SHORTCODE_REDIRECT);
+    }
+
+    if (!link.isActive) {
       throw new AppError('Link not found or inactive', 404, 'LINK_NOT_FOUND');
     }
 
-    if (link.expiresAt && link.expiresAt <= new Date()) {
+    if (link.expiresAt && new Date(link.expiresAt) <= new Date()) {
+      // Evict expired link from cache
+      await cacheService.del(cacheKey);
       throw new AppError('Link has expired', 410, 'LINK_EXPIRED');
     }
 
@@ -198,7 +239,7 @@ export class LinkService {
         referrer: reqMeta?.referrer || null,
         timestamp: new Date().toISOString(),
       });
-    } catch (err) {
+    } catch {
       // Fallback: direct click increment if queue error occurs
       await linkRepository.incrementClicks(link.id);
     }

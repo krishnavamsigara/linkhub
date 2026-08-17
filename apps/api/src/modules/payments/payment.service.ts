@@ -4,6 +4,7 @@ import Razorpay from 'razorpay';
 
 import { env } from '../../config/index.js';
 import { AppError } from '../../shared/errors/app-error.js';
+import { cacheService, redisKeys, CACHE_TTL } from '../../infrastructure/redis/index.js';
 import { paymentRepository } from './payment.repository.js';
 import type {
   CreateOrderInput,
@@ -131,6 +132,9 @@ export class PaymentService {
     );
     await paymentRepository.upgradeToPro(userId, periodEnd);
 
+    // Invalidate cached subscription status
+    await cacheService.del(redisKeys.userSubscription(userId));
+
     return {
       success: true,
       message:
@@ -188,6 +192,9 @@ export class PaymentService {
             Date.now() + PRO_SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000,
           );
           await paymentRepository.upgradeToPro(userId, periodEnd);
+
+          // Invalidate cached subscription status
+          await cacheService.del(redisKeys.userSubscription(userId));
         }
         break;
       }
@@ -221,27 +228,35 @@ export class PaymentService {
   async getSubscriptionStatus(
     userId: string,
   ): Promise<SubscriptionStatusResponse> {
-    // Ensure the user has a subscription row (lazily create FREE)
-    const subscription =
-      await paymentRepository.ensureFreeSubscription(userId);
+    const cacheKey = redisKeys.userSubscription(userId);
 
-    const linksUsed = await paymentRepository.countUserLinks(userId);
-    const isPro = subscription.plan === 'PRO';
+    return cacheService.getOrSet<SubscriptionStatusResponse>(
+      cacheKey,
+      async () => {
+        // Ensure the user has a subscription row (lazily create FREE)
+        const subscription =
+          await paymentRepository.ensureFreeSubscription(userId);
 
-    return {
-      plan: subscription.plan,
-      status: subscription.status,
-      currentPeriodEnd: subscription.currentPeriodEnd,
-      cancelledAt: subscription.cancelledAt,
-      features: {
-        maxLinks: isPro ? null : FREE_PLAN_LINK_LIMIT,
-        analyticsAccess: isPro,
-        customThemes: isPro,
+        const linksUsed = await paymentRepository.countUserLinks(userId);
+        const isPro = subscription.plan === 'PRO';
+
+        return {
+          plan: subscription.plan,
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          cancelledAt: subscription.cancelledAt,
+          features: {
+            maxLinks: isPro ? null : FREE_PLAN_LINK_LIMIT,
+            analyticsAccess: isPro,
+            customThemes: isPro,
+          },
+          usage: {
+            linksUsed,
+          },
+        };
       },
-      usage: {
-        linksUsed,
-      },
-    };
+      CACHE_TTL.USER_SUBSCRIPTION,
+    );
   }
 }
 
@@ -249,3 +264,4 @@ export const paymentService = new PaymentService();
 
 // Export limit constant for use in guards
 export { FREE_PLAN_LINK_LIMIT };
+

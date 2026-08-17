@@ -24,6 +24,30 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: linkhub-pgbouncer-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "6432:6432"
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: vamsi123
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: linkhub
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      MAX_DB_CONNECTIONS: 50
+      ADMIN_USERS: postgres
+      AUTH_TYPE: scram-sha-256
+
 
   redis:
           image: redis:8-alpine
@@ -85,4 +109,3 @@ volumes:
   linkhub_postgres_data:
   linkhub_redis_data:
   linkhub_minio_data:
-
